@@ -3,11 +3,11 @@ import pandas as pd
 import threading
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LogisticRegression
-import pickle
 import numpy as np
 import requests
+from time import sleep
 
-PORT = 5051
+PORT = 5000
 SERVER = socket.gethostbyname(socket.gethostname())
 ADDR = (SERVER, PORT)
 FORMAT = "utf-8"
@@ -15,12 +15,12 @@ FORMAT = "utf-8"
 
 class Client():
 
-    def __init__(self, host, port, dataPath):
+    def __init__(self, host, port, dataPath, username, password):
         self.host = host
         self.port = port
-        self.client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.client.connect((host, port))
         self.data = pd.read_csv(dataPath)
+        self.username = username
+        self.password = password
 
 
     def trainModel(self):
@@ -30,24 +30,38 @@ class Client():
 
         model.fit(xTrain, yTrain)
         accuracy = model.score(xTest, yTest)
-        coef = np.array(model.coef_)
-        intercept = np.array(model.intercept_)
-        metrics = pickle.dumps([accuracy, coef, intercept])
-        self.client.send(metrics)
+        # convert to list so they can be serialized
+        coef = model.coef_.tolist()
+        intercept = model.intercept_.tolist()
+        requests.post(f"https://{self.host}:{self.port}/trainClient",
+                      auth=(self.username, self.password),
+                      json={"accuracy": accuracy, "coefficients": coef, "intercepts": intercept},
+                      verify="server.crt")
         print("[MODEL TRAINED] Accuracy: ", accuracy)
 
+
     def standBy(self):
-        """Wait for the server to initiate training"""
+        """Ping the server until training is ready to begin. This gives control over when to train to the server."""
         print("Waiting for server to initiate training\n")
-        msg = self.client.recv(64).decode(FORMAT)
-        print(msg)
-        self.trainModel()
+        # Register the client with the server
+        requests.post(f"https://{self.host}:{self.port}/registerClient",
+                      auth=(self.username, self.password),
+                      verify="server.crt")
+        while True:
+            response = requests.get(f"https://{self.host}:{self.port}/readyToTrain",
+                                    auth=(self.username, self.password),
+                                    verify="server.crt")
+            print(response.json())
+            if response.json()["ready"]:
+                self.trainModel()
+                break
+            sleep(1)  # ping the server once a second per thread
 
 
 
-def createClient(dataPath):
+def createClient(dataPath, username, password):
     """Create a client and register it with the server"""
-    runningClient = Client(SERVER, PORT, dataPath)
+    runningClient = Client(SERVER, PORT, dataPath, username, password)
     runningClient.standBy()
 
 
@@ -56,9 +70,18 @@ path2 = "dataset/iris2.csv"
 path3 = "dataset/iris3.csv"
 
 # Create 3 clients and have them on standby
-thread = threading.Thread(target=createClient, args=(path1,))
-thread.start()
-thread = threading.Thread(target=createClient, args=(path2,))
-thread.start()
-thread = threading.Thread(target=createClient, args=(path3,))
-thread.start()
+thread1 = threading.Thread(target=createClient, args=(path1, "user1", "pass1"))
+thread1.start()
+thread2 = threading.Thread(target=createClient, args=(path2,"user2", "pass2"))
+thread2.start()
+thread3 = threading.Thread(target=createClient, args=(path3,"user3", "pass3"))
+thread3.start()
+thread1.join()
+thread2.join()
+thread3.join()
+
+# Now request the global metrics
+response = requests.get(f"https://{SERVER}:{PORT}/getGlobalMetrics",
+                        auth=("admin", "admin"),
+                        verify="server.crt")
+print("Global Metrics: ", response.json())
