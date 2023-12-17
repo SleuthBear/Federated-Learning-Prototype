@@ -2,9 +2,9 @@
  An example federated learning model
  
 SSL SETUP:
-*1. Install openssl
 
-*2. Generate a private key and a certificate signing request (CSR) with the following command:
+ - Install openssl
+ - Generate a private key and a certificate signing request (CSR) with the following command:
 
 >> openssl genrsa -out ca.key 2048
 >> openssl req -new -x509 -days 365 -key ca.key -subj "/C=AU/ST=VICTORIA/L=MELBOURNE" -out ca.crt
@@ -13,10 +13,17 @@ SSL SETUP:
         -CAcreateserial -out server.crt -days 365
 
 Python Environment Setup:
-*1. Make sure python is installed.
-*2. create a virtual environment with the following command:
+ - Make sure python is installed.
+ - create a virtual environment with the following command:
 >> python3 -m venv venv
-*3. Activate the virtual environment with the following command:
+ - Activate the virtual environment with the following command:
 >> source venv/bin/activate
-*4. Install the required packages with the following command:
+ - Install the required packages with the following command:
 >> pip install -r requirements.txt
+ 
+How to Run:
+ - run dataDownload.py. this will download the iris data onto your system.
+ - run server.py. This will intialize the flask app, so clients can make api calls
+ - run client.py. This will create 3 simulated client computers, and register them with the server.
+   The server will then trigger training to start, collect the trained models, aggregate and test them.
+
