@@ -1,15 +1,7 @@
-import socket
-import threading
 from sklearn.linear_model import LogisticRegression
-from time import sleep
 import pandas as pd
-import pickle
-import numpy as np
 
-PORT = 5050
-SERVER = socket.gethostbyname(socket.gethostname())
-ADDR = (SERVER, PORT)
-FORMAT = "utf-8"
+
 
 class FLOrchestrator():
     """An orchestrator class that will manage the training and evaluation of the model over time.
@@ -36,7 +28,7 @@ class FLOrchestrator():
         """Register a client with the server"""
         self.clients.append(name)
         print(f"[NEW CONNECTION] {name} connected.")
-        print(f"[ACTIVE CLIENTS] {[c[1] for c in self.clients]}")
+        print(f"[ACTIVE CLIENTS] {self.clients}")
 
     def globalTrain(self):
         """Trigger aggregation of client models"""

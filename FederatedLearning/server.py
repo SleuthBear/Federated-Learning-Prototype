@@ -12,26 +12,16 @@ users = json.load(f)
 
 
 def valid_user(user, password):
+    """Check if the user is valid"""
     if user in users:
         if users[user] == password:
             return True
     return False
 
 
-@app.route('/postModelInfo', methods=['POST'])
-def postModelInfo():
-    if valid_user(request.authorization.username, request.authorization.password):
-        print("Valid User")
-        orchestrator.clientAccuracy.append(float(request.json['accuracy']))
-        print(orchestrator.clientAccuracy)
-        return 'Success'
-    else:
-        print("Invalid User")
-    return 'Failure'
-
-
 @app.route('/readyToTrain', methods=['GET'])
 def readyToTrain():
+    """Check if all clients are connected and ready to train"""
     if valid_user(request.authorization.username, request.authorization.password):
         print("Valid User")
         return json.dumps({"ready": len(orchestrator.clients) >= orchestrator.minClients})
@@ -42,6 +32,7 @@ def readyToTrain():
 
 @app.route('/registerClient', methods=['POST'])
 def registerClient():
+    """Register a client with the server"""
     if valid_user(request.authorization.username, request.authorization.password):
         orchestrator.registerClient(request.authorization.username)
         return 'Success'
@@ -67,8 +58,10 @@ def trainClient():
         orchestrator.globalTrain()
     return 'Success'
 
+
 @app.route('/getGlobalMetrics', methods=['GET'])
 def getGlobalMetrics():
+    """ Return the global accuracy, coefficients and intercepts of the model"""
     if valid_user(request.authorization.username, request.authorization.password):
         orchestrator.scoreModel()
         return json.dumps({"accuracy": orchestrator.globalAccuracy,
@@ -77,6 +70,7 @@ def getGlobalMetrics():
     else:
         print("Invalid Client Metrics")
     return json.dumps({"accuracy": -1})
+
 
 if __name__ == '__main__':
     context = ('server.crt', 'server.key')  # certificate and key files
